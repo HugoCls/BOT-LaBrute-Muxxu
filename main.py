@@ -27,7 +27,7 @@ def get_brutes():
           'agility': [],
           'rapidity': []
           }
-    
+
     df=pd.DataFrame(data,dtype=int)
     
     r_team=requests.get('http://labrute.muxxu.com/team',cookies=sid)
