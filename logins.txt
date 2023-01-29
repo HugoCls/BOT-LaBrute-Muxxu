@@ -1,1 +1,1 @@
-email:passwords
+email:password
