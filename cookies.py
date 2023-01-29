@@ -1,6 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 
+def get_logins():
+    with open('login.txt', 'r') as f:
+        text=f.readline().split(':')
+    (email,password)=(text[0],text[1])
+    return(email,password)
+
 def get_cookies():
     twinoid_url = 'https://twinoid.com/bar/view?lang=fr;chk=e478ae8600d5be76bae65ee279425298;ver=397;infos=n;ch=d41d8cd98f00b204e9800998ecf8427e;tz=-60;fver=100.0.0;jsm=1;url=%2F;host=labrute.muxxu.com;proto=http%3A'
 
@@ -23,9 +29,11 @@ def get_cookies():
     login_url='https://twinoid.com/user/login'
     tw_sid=r.headers['Set-Cookie'][:r.headers['Set-Cookie'].find(';')]
     
+    email,password=get_logins()
+    
     login_data={
-        'login': 'zorpal@live.fr',
-        'pass': 'Acolson31',
+        'login': email,
+        'pass': password,
         'submit': 'Me connecter',
         'host': 'labrute.muxxu.com',
         'sid': tw_sid,
