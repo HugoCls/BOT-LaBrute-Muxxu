@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 def get_logins():
-    with open('login.txt', 'r') as f:
+    with open('logins.txt', 'r') as f:
         text=f.readline().split(':')
     (email,password)=(text[0],text[1])
     return(email,password)
