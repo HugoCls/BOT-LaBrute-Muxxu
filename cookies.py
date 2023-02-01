@@ -1,8 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
+import os
 
 def get_logins():
-    with open('logins.txt', 'r') as f:
+    with open(os.getcwd()+'/data/logins.txt', 'r') as f:
         text=f.readline().split(':')
     (email,password)=(text[0],text[1])
     return(email,password)
@@ -94,6 +95,6 @@ def get_cookies():
     cookies_dict={'tw_sid': tw_sid.strip('tw_sid='),
                   'sid': sid.strip('sid=')
                   }
-    with open('cookies.txt', 'w') as f:
+    with open(os.getcwd()+'/data/cookies.txt', 'w') as f:
         f.write(tw_sid.strip('tw_sid=')+':'+sid.strip('sid='))
     f.close()
