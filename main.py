@@ -2,12 +2,17 @@ import requests
 from bs4 import BeautifulSoup
 import cookies
 import pandas as pd
+import time
+import random as rd
+import display
+import fantasynames
+import os
 
 def reset_cookies():
-    global cookie,sid
+    global cookie,sid,tw_sid
     cookies.get_cookies()
 
-    with open('cookies.txt', 'r') as f:
+    with open(os.getcwd()+"/data/cookies.txt", 'r') as f:
         text=f.readline().split(':')
         
     sid={'sid': text[1]}
@@ -15,6 +20,8 @@ def reset_cookies():
     cookie={'hcw': '1',
             'sid': sid['sid']
             }
+    
+    tw_sid={'tw_sid': text[0]}
 
 reset_cookies()
 
@@ -78,42 +85,74 @@ def attack_brute(b_id):
         }
 
     r=requests.get(url,cookies=cookie,headers=headers)
-    add_r_count()
+    display.add_r_count()
     soup=BeautifulSoup(r.text,'html.parser')
     
     brutes=soup.find_all('td',class_="sheet")
     if len(brutes)>=2:
-        hp_min=1000
-        j=0
-        for i in range(len(brutes)):
-            hps=int(brutes[i].find_all('p')[1].text.strip(' Vie '))
-            #print(i,hps)
-            if hps<=hp_min:
-                j=i
-                hp_min=hps
+        j=rd.randint(0,7)
+        
         b_to_attack=brutes[j].find_all('a')[0]['href'].strip('/b/')
+        
+        """
+        health=brutes[j].find_all('p')[1].text.strip(' Vie ')
+        straight=brutes[j].find_all('p')[2].text.strip(' Force ')
+        agility=brutes[j].find_all('p')[3].text.strip(' Agilité ')
+        rapidity=brutes[j].find_all('p')[4].text.strip(' Rapidité ')
+        """
+        
+        brute=brutes[j]
+        
+        """
+        p=brute.text.find('Vie ')+len('Vie ')
+        health=brute.text[p:p+1]
+        """
+        health=int(brutes[j].find_all('p')[1].text.strip(' Vie '))
+        """
+        p=brute.text.find('Vie ')+len('Vie ')
+        health=brute.text[p:p+2]
+        """
+        p=brute.text.find('Force ')+len('Force ')
+        straight=brute.text[p:p+1]
+        
+        p=brute.text.find('Agilité ')+len('Agilité ')
+        agility=brute.text[p:p+1]
+        
+        p=brute.text.find('Rapidité ')+len('Rapidité ')
+        rapidity=brute.text[p:p+1]
         
         headers['Referer']=url
         
         url=url.strip('/train')+'/attack?b='+str(b_to_attack)
         
         r=requests.get(url,headers=headers,cookies=cookie)        
-        add_r_count()
-        return(True,r)
+        display.add_r_count()
+        return(health,straight,agility,rapidity)
     else:
-        return(False,r)
+        return(None,None,None,None)
 
 ######################################################################################
 def loop():
     df=get_brutes()
     total_r=0
+    
+    brutes_data=[]
+    
     for i in range(len(df)):
-        reset_r_count()
+        display.reset_r_count()
         b_id=df.loc[i]['b_id']
+        
+        t_b=time.time()
         fxp,blessures,payer,level_up,attacks,rang=b_loop(b_id)
-        print('Requests '+get_r_count()+' | Trained '+str(b_id)+' | Attacks '+str(attacks)+' | '+str(fxp[0])+'/'+str(fxp[1])+' '+rang)
-        total_r+=int(get_r_count())
+        b_time=time.time()-t_b
+        print('Requests '+display.get_r_count()+' | '+str(round(b_time,2))+' | Trained '+str(b_id)+' | Attacks '+str(attacks)+' | '+str(fxp[0])+'/'+str(fxp[1])+' '+rang)
+        
+        brutes_data.append([display.get_r_count(),b_time,b_id,attacks,rang])
+        
+        total_r+=int(display.get_r_count())    
+
     print(total_r)
+    return(brutes_data)
 
 def b_loop(b_id):
     global cookie,sid
@@ -132,12 +171,11 @@ def b_loop(b_id):
     healed=False
     while True:
         r=requests.get(url,cookies=cookie,headers=headers)
-        add_r_count()
+        display.add_r_count()
         soup=BeautifulSoup(r.text,'html.parser')
         
         #4 injuries 4085909
         fxp,blessures,payer,level_up,disconnected,rang=get_b_infos(soup)
-        
         
         if disconnected:
             print('-- Reconnecting --')
@@ -151,10 +189,28 @@ def b_loop(b_id):
                     max_injuries=4
                 else:
                     max_injuries=3
+                ###RETHINK THE ATTACK LOOP
                 for i in range(min(fxp[1]-fxp[0],max_injuries-blessures)):
-                    attack_brute(b_id)
-                    attacks+=1
-            
+                    health,straight,agility,rapidity=attack_brute(b_id)
+                    
+                    if health!=None:
+                        #Get new injuries count
+                        r=requests.get(url,cookies=cookie,headers=headers)
+                        display.add_r_count()
+                        soup=BeautifulSoup(r.text,'html.parser')
+                        fxp,new_blessures,payer,level_up,disconnected,rang=get_b_infos(soup)
+                        if blessures!=new_blessures:
+                            blessures=new_blessures
+                            win='0'
+                            
+                        else:
+                            win='1'
+                            
+                        display.add_data(b_id,health,straight,agility,rapidity,win)
+                        
+                        attacks+=1
+
+                    
             if payer:
                 if healed==False:
                     if soup.select('#mxcontent > div.box2top > div > div > table')[0].find_all('li')[1].has_attr('class'):
@@ -164,7 +220,7 @@ def b_loop(b_id):
                         healed=True
                 else:
                     r=requests.get(url,cookies=cookie,headers=headers)
-                    add_r_count()
+                    display.add_r_count()
                     soup=BeautifulSoup(r.text,'html.parser')
                     
                     fxp,blessures,payer,level_up,disconnected,rang=get_b_infos(soup)
@@ -233,7 +289,7 @@ def heal(b_id,soup):
     url=url+end_url
     
     r=requests.get(url,cookies=sid,headers=headers)
-    add_r_count()
+    display.add_r_count()
     return(r)
 
 def levelup(b_id):
@@ -249,7 +305,7 @@ def levelup(b_id):
         'Connection': 'close'
         }  
     r=requests.get(url,cookies=cookie,headers=headers)
-    add_r_count()
+    display.add_r_count()
     soup=BeautifulSoup(r.text,'html.parser')
     
     end_url=soup.select('#mxcontent > div > ul.learn > li.one > a')[0]['href']
@@ -281,19 +337,81 @@ def levelup(b_id):
     r_choice=requests.get(choice_url,headers=headers,cookies=cookie)
     return(r_choice)
 
-def add_r_count():
-    with open('requests.txt', 'r') as f:
-        count=f.read()
-    with open('requests.txt', 'w') as f:
-        f.write(str(int(count)+1))
 
-def reset_r_count():
-    with open('requests.txt', 'w') as f:
-        f.write('0')
 
-def get_r_count():
-    with open('requests.txt', 'r') as f:
-        count=f.read()
-    return(count)
-
-loop()
+def recrut():
+    global cookie,sid
+    url='http://labrute.muxxu.com/recrut'
+    
+    headers={
+        'Host': 'labrute.muxxu.com',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.5304.107 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Referer': 'http://labrute.muxxu.com/',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Connection': 'close'
+        }
+    
+    r=requests.get(url,cookies=cookie,headers=headers)
+    soup=BeautifulSoup(r.text,'html.parser')
+    end_url=soup.select('#mxcontent > ul > li:nth-child(1) > a')[0]['href'].strip('/recrut')
+    headers['Referer']='http://labrute.muxxu.com/recrut'
+    url+=end_url
+    r=requests.get(url,cookies=cookie,headers=headers)
+    
+    name=fantasynames.anglo()
+    
+    brute_data={
+        'name': name,
+        'ok': 'on'
+        }
+    
+    headers={
+        'Host': 'labrute.muxxu.com',
+        'Content-Lenght': str(len('name='+name+'&ok='+'on')),
+        'Cache-Control': 'max-age=0',
+        'Upgrade-Insecure-Requests': '1',
+        'Origin': 'http://labrute.muxxu.com',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.5304.107 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Referer': url,
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Connection': 'close'
+        }
+    
+    r=requests.post(url, cookies=cookie, headers=headers,data=brute_data)
+    
+    if 'chk' in r.url:
+        return(False)
+    b_id=r.url.strip('http://labrute.muxxu.com/b/')
+    
+    brute=soup.select('#mxcontent > ul > li:nth-child(1)')[0]
+    
+    p=brute.text.find('Vie ')+len('Vie ')
+    health=brute.text[p:p+2]
+   
+    p=brute.text.find('Force ')+len('Force ')
+    straight=brute.text[p:p+1]
+    
+    p=brute.text.find('Agilité ')+len('Agilité ')
+    agility=brute.text[p:p+1]
+    
+    p=brute.text.find('Rapidité ')+len('Rapidité ')
+    rapidity=brute.text[p:p+1]
+    
+    #print(b_id,health,straight,agility,rapidity)
+    display.add_chosen_brute(b_id,health,straight,agility,rapidity)
+    
+    return(True)
+"""
+j=0
+while True:
+    print(recrut(),end='-')
+    j+=1
+    print(j)
+"""
+brutes_data=loop()
