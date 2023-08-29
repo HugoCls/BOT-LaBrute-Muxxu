@@ -1,8 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 import random as rd
+from datetime import datetime
 
+from AI import use_model
 from data.http_parameters import brute_headers, brute_action_headers
+from Database_class import Database
 
 labrute_scheme = "http:"
 labrute_domain = "labrute.muxxu.com"
@@ -10,12 +13,15 @@ labrute_domain = "labrute.muxxu.com"
 twinoid_scheme = "https:"
 twinoid_domain = "twinoid.com"
 
+database = Database()
 
 class Brute:
-    def __init__(self, bot, id, level, hps, strength, agility, rapidity):
+    def __init__(self, bot, id, name, level, hps, strength, agility, rapidity):
+        database.insert_into_database(data = (id, name, None, level, hps, strength, agility, rapidity, None, None, None, None, None))
         self.detail = False
         self.bot = bot
         self.id = id
+        self.name = name
         self.healed = False
         self.level = level
         self.hps = hps
@@ -27,6 +33,7 @@ class Brute:
 
     def show(self):
         print(f"id: {self.id}")
+        print(f"name: {self.name}")
         print(f"level: {self.level}")
         print(f"hps: {self.hps}")
         print(f"strength: {self.strength}")
@@ -176,13 +183,14 @@ class Brute:
         else:
             self.level_up = False
             
-        N=soup.text.find('Classement')+60
+        N = soup.text.find('Classement')+60
 
         self.rang = soup.text[N:].replace('\r','').replace('\n','').replace('\t','').split()[0] # A revoir, Regex?
 
         self.max_injuries = 3 if soup.select('#mxcontent > div.box2top > div')[0].find_all('span')[0].text == '3' else 4
 
         if self.detail:
+            print('-- Dynamic infos --')
             print(f"fxp: {self.fxp}")
             print(f"blessures: {self.blessures}")
             print(f"payer: {self.payer}")
@@ -190,6 +198,9 @@ class Brute:
             print(f"level_up: {self.level_up}")
             print(f"rang: {self.rang}")
             print(f"max_injuries: {self.max_injuries}")
+        
+        database.insert_into_database(data = (self.id, self.name, self.rang, self.level, self.hps, self.strength, self.agility, self.rapidity, self.fxp[0], self.fxp[1], self.blessures, None, datetime.utcnow() if self.healed else None))
+        
 
     def attack_brute(self):
         endpoint = f'b/{self.id}/train'
@@ -199,41 +210,58 @@ class Brute:
         soup = BeautifulSoup(r.text,'html.parser')
         
         brutes = soup.find_all('td',class_="sheet")
+
         if len(brutes) >= 2:
-            j=rd.randint(0,7)
             
-            b_to_attack=brutes[j].find_all('a')[0]['href'].strip('/b/')
+            win_probability = []
+
+            for brute in brutes:
+                p=brute.text.find('Vie ') + len('Vie ')
+                health = int(brute.text[p:p+2])
+                
+                p=brute.text.find('Force ') + len('Force ')
+                straight = int(brute.text[p:p+1])
+                
+                p=brute.text.find('Agilité ') + len('Agilité ')
+                agility = int(brute.text[p:p+1])
+                
+                p=brute.text.find('Rapidité ') + len('Rapidité ')
+                rapidity = int(brute.text[p:p+1])
+
+                win_probability.append(use_model([health, straight, agility, rapidity]))
+
+            AI_guess = max(win_probability)
+
+            j = win_probability.index(AI_guess)
             
-            """
-            health=brutes[j].find_all('p')[1].text.strip(' Vie ')
-            straight=brutes[j].find_all('p')[2].text.strip(' Force ')
-            agility=brutes[j].find_all('p')[3].text.strip(' Agilité ')
-            rapidity=brutes[j].find_all('p')[4].text.strip(' Rapidité ')
-            """
+            id = brutes[j].find_all('a')[0]['href'].strip('/b/')
             
-            brute=brutes[j]
-            
-            """
-            p=brute.text.find('Vie ')+len('Vie ')
-            health=brute.text[p:p+1]
-            """
-            health=int(brutes[j].find_all('p')[1].text.strip(' Vie '))
-            """
-            p=brute.text.find('Vie ')+len('Vie ')
-            health=brute.text[p:p+2]
-            """
-            p=brute.text.find('Force ')+len('Force ')
-            straight=brute.text[p:p+1]
-            
-            p=brute.text.find('Agilité ')+len('Agilité ')
-            agility=brute.text[p:p+1]
-            
-            p=brute.text.find('Rapidité ')+len('Rapidité ')
-            
-            rapidity=brute.text[p:p+1]
+            brute = brutes[j]
             
             self.brute_headers['Referer'] = f"{labrute_scheme}//{labrute_domain}/{endpoint}"
             
-            endpoint = f'b/{self.id}/attack?b={b_to_attack}'
+            endpoint = f'b/{self.id}/attack?b={id}'
             
-            r=requests.get(f"{labrute_scheme}//{labrute_domain}/{endpoint}",headers=self.brute_headers,cookies=self.bot.cookies)
+            r = requests.get(f"{labrute_scheme}//{labrute_domain}/{endpoint}",headers=self.brute_headers,cookies=self.bot.cookies)
+
+            # Créez un objet Beautiful Soup
+            soup = BeautifulSoup(r.text, 'html.parser')
+
+            # Trouvez tous les scripts dans la page
+            scripts = soup.find_all('script')
+
+            # Parcourez les scripts pour trouver ceux contenant "FlashVars"
+            for script in scripts:
+                if "FlashVars" in script.text:
+                    flash_script = script
+                    break
+
+            FlashVars = flash_script.text
+
+            i = FlashVars.find('so.addParam("FlashVars","') + len('so.addParam("FlashVars","')
+            j = FlashVars.find('so.addParam("menu"')
+
+            FlashVars = FlashVars[i:j].strip('\n')
+
+        
+            database.log_fight(self.id, self.rang, id, health, straight, agility, rapidity, None, AI_guess, FlashVars) # rajouter le bool WIN

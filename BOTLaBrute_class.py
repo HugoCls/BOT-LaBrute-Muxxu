@@ -4,26 +4,27 @@ from bs4 import BeautifulSoup
 
 from Brute_class import Brute
 from data.http_parameters import login_headers, login_data, twinoid_headers, twinoid_url, login_url, brute_headers, brute_action_headers
+from Database_class import Database
 
 labrute_scheme = "http:"
 labrute_domain = "labrute.muxxu.com"
 
-twinoid_scheme = "http:"
+twinoid_scheme = "https:"
 twinoid_domain = "twinoid.com"
+
+database = Database()
 
 class BOTLaBrute:
     def __init__(self):
-        pass
-
-    def run(self):        
-        ## Scrapping part
         print("Connecting & getting cookies..")
         self.initiate_cookies()
 
         self.connected = True
-
+        
         print("Getting brutes from fronted")
         self.brutes = self.get_brutes()
+
+    def run(self):        
 
         print("Loop on brutes")
         for id in self.brutes:
@@ -33,14 +34,13 @@ class BOTLaBrute:
 
             brute.show()
             
-            if brute.id == '4195902':
-                brute.detail = True
-                while True:
-                    brute.loop()
-                    print('\n')
-                    if brute.healed and brute.payer:
-                        break
-                break   
+            brute.detail = True
+            while True:
+                brute.loop()
+                print('\n')
+                if brute.healed and brute.payer:
+                    break
+            break
             print('\n')
             
 
@@ -98,12 +98,13 @@ class BOTLaBrute:
         
         for brute in soup_brutes:
             id = brute.find_all('a')[0]['href'].strip('/b/')
+            name = brute.select('h2 > a')[0].text
             level = brute.find_all('p')[0].text.strip(' ')
             hps = brute.find_all('p')[1].text.strip(' Vie ')
             strength = brute.find_all('p')[2].text.strip(' Force ')
             agility = brute.find_all('p')[3].text.strip(' Agilité ')
             rapidity = brute.find_all('p')[4].text.strip(' Rapidité ')
             
-            brutes[id] = Brute(self, id, level, hps, strength, agility, rapidity)
+            brutes[id] = Brute(self, id, name, level, hps, strength, agility, rapidity)
 
         return brutes
