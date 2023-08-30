@@ -18,6 +18,9 @@ database.delete_tables()
 
 database.create_tables()
 """
+
+database.save_database()
+
 class BOTLaBrute:
     def __init__(self):
         print("Connecting & getting cookies..")
