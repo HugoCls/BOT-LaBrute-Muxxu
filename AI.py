@@ -44,23 +44,3 @@ def use_model(nouveau_combattant):
     probabilite_victoire = model.predict(nouveau_combattant,verbose=0)
     #print("Probabilité de victoire:", probabilite_victoire[0][0])
     return probabilite_victoire[0][0]
-
-
-def get_fights():
-    L_results=[]
-    with open(os.getcwd() + "/data/brutes_attacked.txt",'r') as f:
-        L=f.readlines()
-    for i in range(len(L)):
-        line=L[i]
-        line=line.strip('\n')
-        line=line.split(':')
-        L[i]=line[1:-1]
-        L_results.append(line[-1])
-        
-    L_results=np.array(L_results)
-    results=L_results.astype(int)
-    
-    L=np.array(L)
-    caracteristics=L.astype(int)
-    
-    return caracteristics,results
