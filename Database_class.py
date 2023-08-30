@@ -1,14 +1,15 @@
 import mysql.connector
 import pandas as pd
+from datetime import datetime
 
 class Database():
     def __init__(self):
         # Établir une connexion à la base de données
         self.connection = mysql.connector.connect(
             host="localhost",
-            port="10005",
+            port="3306",
             user="root",
-            password="root",
+            #password="your_password",
             database="local"
         )
 
@@ -17,9 +18,6 @@ class Database():
 
     def run(self):
         self.create_tables()
-
-        self.insert_into_database(data = (4195904, "Changed", "Platinium", 8, 60, 7, 2, 7))
-        self.insert_into_database(data = (4195102, "Hugo", "Master", 8, 60, 7, 2, 7))
 
         df = self.get_table(table_name="brutes")
 
@@ -41,9 +39,8 @@ class Database():
             rapidity INT,
             xp INT,
             xp_max INT,
-            injuries INT,
             victories INT,
-            last_heal_datetime DATETIME
+            last_update DATETIME
         )
         """
         self.cursor.execute(create_table_query)
@@ -51,35 +48,51 @@ class Database():
         # Créer une table
         create_table_query = """
         CREATE TABLE IF NOT EXISTS attacks_logs (
-            id INT PRIMARY KEY,
+            date_time DATETIME,
+            id INT,
             rang VARCHAR(50),
             id_target INT,
             hps INT,
             strength INT,
             agility INT,
             rapidity INT,
-            win BOOL,
             AI_guess FLOAT,
-            FlashVars VARCHAR(150)
+            FlashVars VARCHAR(150),
+            win BOOL
         )
         """
         self.cursor.execute(create_table_query)
         self.connection.commit()
 
+    def delete_tables(self):
+        query = """
+        DROP TABLE brutes
+        """
+        self.cursor.execute(query)
+        self.connection.commit()
+        
+        query = """
+        DROP TABLE attacks_logs
+        """
+        self.cursor.execute(query)
+        self.connection.commit()
+
     def log_fight(self, data):
+        data = (datetime.utcnow(),) + data
         # Insérer des données dans la table
         insert_query = """
-        INSERT INTO brutes (id, rang, id_target, hps, strength, agility, rapidity, win, AI_guess, FlashVars)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO attacks_logs (date_time, id, rang, id_target, hps, strength, agility, rapidity, AI_guess, FlashVars, win)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         self.cursor.execute(insert_query, data)
         self.connection.commit()
 
     def insert_into_database(self, data):
+        data = data + (datetime.utcnow(),)
         # Insérer des données dans la table
         insert_query = """
-        INSERT INTO brutes (id, name, rang, level, hps, strength, agility, rapidity, xp, xp_max, injuries, victories, last_heal_datetime)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO brutes (id, name, rang, level, hps, strength, agility, rapidity, xp, xp_max, victories, last_update)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
         level = VALUES(level),
         rang = COALESCE(rang, VALUES(rang)),
@@ -89,9 +102,8 @@ class Database():
         rapidity = VALUES(rapidity),
         xp = COALESCE(xp, VALUES(xp)),
         xp_max = COALESCE(xp_max, VALUES(xp_max)),
-        injuries = COALESCE(injuries, VALUES(injuries)),
         victories = COALESCE(victories, VALUES(victories)),
-        last_heal_datetime = COALESCE(last_heal_datetime, VALUES(last_heal_datetime))
+        last_update = COALESCE(last_update, VALUES(last_update))
         """
         self.cursor.execute(insert_query, data)
         self.connection.commit()
@@ -108,6 +120,20 @@ class Database():
 
         # Obtenir les données de la table
         self.cursor.execute(f"SELECT * FROM {table_name}")
+        rows = self.cursor.fetchall()
+
+        # Créer un DataFrame avec les données et les noms des colonnes
+        df = pd.DataFrame(rows, columns=columns)
+        
+        return df
+    
+    def custom_query(self, query, table_name):
+        # Obtenir les noms des colonnes de la table
+        self.cursor.execute(f"DESCRIBE {table_name}")
+        columns = [column[0] for column in self.cursor.fetchall()]
+
+        # Obtenir les données de la table
+        self.cursor.execute(query)
         rows = self.cursor.fetchall()
 
         # Créer un DataFrame avec les données et les noms des colonnes

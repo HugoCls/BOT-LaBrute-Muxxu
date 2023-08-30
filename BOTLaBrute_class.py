@@ -13,7 +13,11 @@ twinoid_scheme = "https:"
 twinoid_domain = "twinoid.com"
 
 database = Database()
+"""
+database.delete_tables()
 
+database.create_tables()
+"""
 class BOTLaBrute:
     def __init__(self):
         print("Connecting & getting cookies..")
@@ -24,25 +28,31 @@ class BOTLaBrute:
         print("Getting brutes from fronted")
         self.brutes = self.get_brutes()
 
-    def run(self):        
+        print("-- Which brutes to train --")
+        self.ids_trained = self.get_trained_brutes()
+        
+    def run(self):
 
         print("Loop on brutes")
         for id in self.brutes:
-            brute = self.brutes[id]
 
-            brute.update_dependencies(self)
+            if int(id) in self.ids_trained:
+                None
+            else:
+                brute = self.brutes[id]
 
-            brute.show()
-            
-            brute.detail = True
-            while True:
-                brute.loop()
-                print('\n')
-                if brute.healed and brute.payer:
-                    break
-            break
-            print('\n')
-            
+                brute.update_dependencies(self)
+
+                brute.show()
+                
+                #brute.detail = True
+
+                brute.get_infos()
+
+                while not brute.trained:
+                    
+                    brute.loop()
+
 
     def initiate_cookies(self):
         
@@ -108,3 +118,19 @@ class BOTLaBrute:
             brutes[id] = Brute(self, id, name, level, hps, strength, agility, rapidity)
 
         return brutes
+    
+    def get_trained_brutes(self):
+        query = """
+        SELECT
+            *
+        FROM brutes
+        WHERE id IN (
+            SELECT 
+                DISTINCT(id)
+            FROM attacks_logs
+            WHERE DATE(DATE_ADD(date_time, INTERVAL 2 HOUR)) = CURRENT_DATE()
+            )
+        """
+        table_name = "brutes"
+
+        return list(database.custom_query(query, table_name)['id'])
