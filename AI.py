@@ -44,3 +44,6 @@ def use_model(nouveau_combattant):
     probabilite_victoire = model.predict(nouveau_combattant,verbose=0)
     #print("Probabilité de victoire:", probabilite_victoire[0][0])
     return probabilite_victoire[0][0]
+
+def get_fights():
+    pass
