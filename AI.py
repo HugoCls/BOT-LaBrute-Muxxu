@@ -5,6 +5,8 @@ from keras.layers import Dense
 from keras.models import load_model
 import os
 
+model = load_model(f"{os.getcwd()}/data/predict_model.h5")
+
 def create_model():
     # traitez les éléments séparés ici
     # générer des données de combat simulées
@@ -13,7 +15,7 @@ def create_model():
     
     # séparer les données en entrée (caractéristiques) et cible (résultat)
     X = caracteristics
-    y = results
+    Y = results
     
     # définir le modèle
     model = Sequential()
@@ -24,17 +26,15 @@ def create_model():
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     
     # entraîner le modèle
-    model.fit(X, y, epochs=1000, verbose=1,
-    validation_split = 0.2, batch_size=32)
+    model.fit(X, Y, epochs=1000, verbose=1, validation_split = 0.2, batch_size=32)
     
     # sauvegarder le modèle
-    model.save(os.getcwd()+'/data/predict_model.h5')
+    model.save(f"{os.getcwd()}/data/predict_model.h5")
 
-model = load_model(os.getcwd()+'/data/predict_model.h5')
 
 def use_model(nouveau_combattant):
     
-    nouveau_combattant=np.array([nouveau_combattant])
+    nouveau_combattant = np.array([nouveau_combattant])
     #nouveau_combattant = np.random.randint(0, 100, size=(1, 4))
     
     #•print(nouveau_combattant)
@@ -42,12 +42,13 @@ def use_model(nouveau_combattant):
      
     # faire une prédiction avec le modèle formé
     probabilite_victoire = model.predict(nouveau_combattant,verbose=0)
-    print("Probabilité de victoire :", probabilite_victoire[0][0])
-    
-    
+    #print("Probabilité de victoire:", probabilite_victoire[0][0])
+    return probabilite_victoire[0][0]
+
+
 def get_fights():
     L_results=[]
-    with open(os.getcwd()+"/data/brutes_attacked.txt",'r') as f:
+    with open(os.getcwd() + "/data/brutes_attacked.txt",'r') as f:
         L=f.readlines()
     for i in range(len(L)):
         line=L[i]
@@ -62,10 +63,4 @@ def get_fights():
     L=np.array(L)
     caracteristics=L.astype(int)
     
-    return(caracteristics,results)
-
-
-for i in range(50,95):
-    for j in range(2,8):
-        print([i,2,j,2],end=' ')
-        use_model([i,2,j,2])
+    return caracteristics,results
