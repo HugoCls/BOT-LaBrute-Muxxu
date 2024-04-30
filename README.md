@@ -22,7 +22,7 @@ By reproducing the correct requests with appropriate headers and up-to-date cook
 
 <div style="display: flex;">
     <img src="images/inventory.png" alt="Image 1" style="flex: 50%; padding: 5px;">
-    <img src="images/inventory2.png" alt="Image 2" style="flex: 40%; padding: 5px;">
+    <img src="images/inventory2.png" alt="Image 2" style="flex: 50%; padding: 5px;">
 </div>
 
 ### Neural Network
