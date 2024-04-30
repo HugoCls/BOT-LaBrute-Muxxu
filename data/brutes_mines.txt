@@ -1,4 +1,0 @@
-b_id:health:streight:agility:rapidity
-b_id:health:streight:agility:rapidity
-b_id:health:streight:agility:rapidity
-...
